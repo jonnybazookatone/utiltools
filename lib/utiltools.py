@@ -121,7 +121,7 @@ class DiskDatabase(object):
 
 				if tdisk._infoDict["Filesystem"] == Name:
 
-					toRemove = {"G": 1.0, "M":1.0e-3, "%": 1.0, "K": 1.0e-6}
+					toRemove = {"G": 1.0, "M":1.0e-3, "%": 1.0, "K": 1.0e-6, "T": 1e3}
 					tt = tdisk._infoDict["Time"]
 					aa = tdisk._infoDict["Avail"]
 					uu = tdisk._infoDict["Used"]
