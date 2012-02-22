@@ -1,6 +1,8 @@
 #!/usr/bin/python
 """Default python script layout."""
 
+import glob
+import os
 import subprocess
 import matplotlib.pyplot as plt
 
@@ -13,6 +15,10 @@ __maintainer__ = "Jonny Elliott"
 __email__ = "jonnyelliott@mpe.mpg.de"
 __status__ = "Prototype"
 
+class UserAccount(object):
+	def __init__(self):
+		self._Name = ""
+		self._infoDict = {}
 
 class DiskObj(object):
 
@@ -23,6 +29,119 @@ class DiskObj(object):
 	def printInfo(self):
 		for keys in self._infoDict.keys():
 			print "%s: %s" % (keys, self._infoDict[keys])
+
+	def getUsers(self):
+
+		if self._infoDict["Filesystem"] == "none":
+			return []
+		diskname = self._infoDict["Mounted"]
+		users = os.listdir("%s/%s" % (diskname, "home"))
+                toRemove = {"G": 1.0, "M":1.0e-3, "%": 1.0, "K": 1.0e-6, "T": 1e3}
+
+		userList = []
+
+		for user in users:
+			newUser = UserAccount()
+			
+			cmd = ["du", "-h", "%s/%s/%s" % (diskname, "home", user)]
+			du = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+			du_content = du.communicate()[0]
+			du_content = [i for i in du_content.replace("\t"," ").replace("\n"," ").split(" ")]
+			du_content = du_content[-3]
+
+			for i in du_content:
+				try:
+					if i in toRemove:
+						dd = float(du_content.replace(i, "")) * toRemove[i]
+				except:
+					x = None
+
+			newUser._infoDict["user"] = user
+			newUser._infoDict["size"] = dd
+
+			userList.append(newUser)
+
+		return userList
+
+	def writeLog(self, logfile="user.log"):
+		logfile = open(logfile, "a+w")
+		users = self.getUsers()
+		
+		if not users:
+			return 0
+
+		for user in users:
+			tmpDict = user._infoDict
+			# user size
+			logfile.write("%s %s\n" % (tmpDict["user"], tmpDict["size"]))
+		logfile.write("#\n")
+		logfile.close()
+
+	def readLog(self, logfile="user.log"):
+
+		try:
+			logfile = open(logfile, "r")
+			logline = logfile.readlines()
+			logfile.close()
+		except:
+			return 0
+
+		logList = []
+		t = 0
+		for log in logline:
+			tmpLog = log.replace("\n", "")
+			if tmpLog != "#":
+				newUser = UserAccount()
+				tmpLog = [i for i in tmpLog.split(" ")]
+				newUser._infoDict["user"] = tmpLog[0]
+				newUser._infoDict["size"] = tmpLog[1]
+				newUser._infoDict["Time"] = t
+				logList.append(newUser)
+			else:
+				t += 1
+
+		return logList
+	
+	def plotHistory(self):
+
+		timeUser = self.readLog()
+		if not timeUser:
+			print "No user"
+			return 0
+
+		# Figure
+		fig = plt.figure(0)
+		ax1 = fig.add_subplot(311)
+
+		users = self.getUsers()
+		for user in users:
+			Name = user._infoDict["user"]
+			print "Name:", Name
+			if Name == "none":
+				continue
+
+			size, time = [], []
+			
+			for tuser in timeUser:
+				print "tuser:", tuser._infoDict["user"]
+
+				if tuser._infoDict["user"] == Name:
+
+					tt = tuser._infoDict["Time"]
+					aa = tuser._infoDict["size"]
+
+					time.append(float(tt))
+					size.append(float(aa))
+
+			ax1.plot(time, size, label=Name)
+		
+		ax1.set_title(self._infoDict["Mounted"])
+		ax1.set_xlabel("time -t0 [days]")
+		ax1.set_ylabel("Size [GB]")
+		ax1.legend(loc=4)
+
+#	plt.show()
+		plt.savefig("user.png", format="png")
 
 class DiskDatabase(object):
 
@@ -177,8 +296,11 @@ class DiskDatabase(object):
 def main():
 
 	MyComp = DiskDatabase()
-	MyComp.writeLog()
-	MyComp.plotHistory()
+	MyComp.collectDisks()
+	for Disk in MyComp._Disks:
+		Disk.writeLog()
+		Disk.plotHistory()
+
 if __name__ == "__main__":
 	main()
 # Tue Feb 21 23:20:18 CLST 2012

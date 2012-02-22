@@ -1,6 +1,8 @@
 #!/usr/bin/python
 """Default python script layout."""
 
+import glob
+
 from wikibot import wikiLib
 from utiltools.lib import utiltools
 
@@ -18,7 +20,11 @@ def main():
         Comp = utiltools.DiskDatabase()
         Comp.writeLog()
         Comp.plotHistory()
-	wikiLib.replaceImage(pagename="MachineStatus",image="disk.png")
+	for Disk in Comp._Disks:
+		Disk.plotHistory()
+
+	imgs = glob.glob("imgs/*.png")
+	wikiLib.replaceImage(pagename="MachineStatus",image=imgs)
 
 if __name__ == "__main__":
 	main()
